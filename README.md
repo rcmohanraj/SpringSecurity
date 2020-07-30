@@ -221,3 +221,13 @@ protected void configure(HttpSecurity http) throws Exception {
 Finally we now have implemented the api access by Role and Permissions based Authority.
 
 Note: We need to disable CSRF to call the POST, PUT, DELETE methods. Otherwise we will get into 403 forbidden error.
+
+Instead of configuring the antMatchers we can also configure the authorities based on annotation called PreAuthorize.
+This annotation will take values in the form like 
+hasRole('ROLE_') hasAnyRole('ROLE_') hasAuthority('permission') hasAnyAuthority('permissions')
+
+If we need to enabled this annotation based authority, we need to add the below annotation in the ApplicationSecurityConfig
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+
+
+
