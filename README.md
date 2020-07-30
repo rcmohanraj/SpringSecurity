@@ -138,4 +138,86 @@ So STUDENT role able to access the /api/** but ADMIN role api access will show a
 But we have a small issue where the **annasmith** user can access URL for all other student as well. So we need to make sure, each student can access
 their details only.
 
+We have two ENUM, 
 
+1)Role 
+Roles are STUDENT, ADMIN, ADMINTRAINEE
+
+2)Permissions are STUDENT_READ, STUDENT_WRITE, COURSE_READ, COURSE_WRITE
+
+In the Role ENUM we are mapping the allowed permissions(Sets) as ENUM value. So we need to build a method in Role ENUM which will give us the permission 
+for the given Role. In Spring Security we need to give roles and permissions in the GrantedAuthority Interface. Here we need to give implementation for
+the interface which is SimpleGrantedAuthority.
+
+```
+ApplicationUserRole.java 
+
+public Set<GrantedAuthority> getGrantedAuthorities() {
+	Set<GrantedAuthority> permissions = getPermissions().stream()
+			.map(permission -> new SimpleGrantedAuthority(permission.getPermission()))
+			.collect(Collectors.toSet());
+	permissions.add(new SimpleGrantedAuthority("ROLE_" + this.name()));
+	return permissions;
+}
+```
+
+In ApplicationSecurityConfig we have userDetailsService method, in this we need to specify the authorities for each user. previously we have given roles 
+in this, because Roles and Permissions will be fetched from the above code. So new code will look like
+
+```
+@Override
+@Bean
+protected UserDetailsService userDetailsService() {
+	UserDetails annaSmithUser = User.builder()
+			.username("annasmith")
+			.password(passwordEncoder.encode("password"))
+			//.roles(STUDENT.name()) //ROLE_STUDENT
+			.authorities(STUDENT.getGrantedAuthorities())
+			.build();
+
+	UserDetails lindaUser = User.builder()
+			.username("linda")
+			.password(passwordEncoder.encode("password123"))
+			//.roles(ADMIN.name()) //ROLE_ADMIN
+			.authorities(ADMIN.getGrantedAuthorities())
+			.build();
+
+	UserDetails tomUser = User.builder()
+			.username("tom")
+			.password(passwordEncoder.encode("password123"))
+			//.roles(ADMINTRAINEE.name()) //ROLE_ADMINTRAINEE
+			.authorities(ADMINTRAINEE.getGrantedAuthorities())
+			.build();
+
+	return new InMemoryUserDetailsManager(
+		annaSmithUser, lindaUser, tomUser
+	);
+}
+
+```
+
+We have allocated authorities to each user based on their Role. Now in the configure method, we have to control the api access with either hasRole 
+method or hasAuthority method.
+
+```
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+	http
+			.csrf().disable() //This reason will be explained below. 
+			.authorizeRequests()//Authorize Request
+			.antMatchers("/", "index", "/css/*", "/js/*").permitAll() // with specific patterns to allow without authentication
+			.antMatchers("/api/**").hasRole(STUDENT.name())
+			.antMatchers(HttpMethod.POST, "/management/api/**").hasAuthority(STUDENT_WRITE.getPermission())
+			.antMatchers(HttpMethod.PUT, "/management/api/**").hasAuthority(STUDENT_WRITE.getPermission())
+			.antMatchers(HttpMethod.DELETE, "/management/api/**").hasAuthority(STUDENT_WRITE.getPermission())
+			.antMatchers(HttpMethod.GET, "/management/api/**").hasAnyRole(ADMIN.name(), ADMINTRAINEE.name())
+			.anyRequest()  //All the Request
+			.authenticated() // Must be authenticated
+			.and()
+			.httpBasic(); //Using Basic Auth Mechanism
+}
+```
+
+Finally we now have implemented the api access by Role and Permissions based Authority.
+
+Note: We need to disable CSRF to call the POST, PUT, DELETE methods. Otherwise we will get into 403 forbidden error.
