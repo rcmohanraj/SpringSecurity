@@ -16,6 +16,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 import static com.codeconfessions.springsecurity.model.ApplicationUserPermission.COURSE_WRITE;
 import static com.codeconfessions.springsecurity.model.ApplicationUserPermission.STUDENT_WRITE;
@@ -32,7 +34,9 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                .csrf().disable()
+                //.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())//This config must be added to enable to spring to generate CSRF token
+                .and()
                 .authorizeRequests()//Authorize Request
                 .antMatchers("/", "index", "/css/*", "/js/*").permitAll() // with specific patterns to allow without authentication
                 .antMatchers("/api/**").hasRole(STUDENT.name())

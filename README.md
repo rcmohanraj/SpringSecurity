@@ -220,7 +220,8 @@ protected void configure(HttpSecurity http) throws Exception {
 
 Finally we now have implemented the api access by Role and Permissions based Authority.
 
-Note: We need to disable CSRF to call the POST, PUT, DELETE methods. Otherwise we will get into 403 forbidden error.
+Note:  
+We need to disable CSRF to call the POST, PUT, DELETE methods. Otherwise we will get into 403 forbidden error.
 
 Instead of configuring the antMatchers we can also configure the authorities based on annotation called PreAuthorize.
 This annotation will take values in the form like 
@@ -229,5 +230,48 @@ hasRole('ROLE_') hasAnyRole('ROLE_') hasAuthority('permission') hasAnyAuthority(
 If we need to enabled this annotation based authority, we need to add the below annotation in the ApplicationSecurityConfig
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 
+**CSRF Protection:** Cross Site Request Forgery  
+An attacker send a malicious links to user. If the user clicks on the link and when the user logged into Bank site, the malicious attack 
+will start to do its work by sending money to the attacker. To prevent this Spring Security will send a CSRF token when the user login to
+the server first time. For the subsequent request (PUT, POST, DELETE) the client will send back the CSRF along with request. This time server will 
+validate the CSRF first and if its token is valid then will proceed accepting the request or else it will throw 403 forbidden.
+
+**Recommendation:**  
+Any request that are processed by a browser by normal user, it should have CSRF protection. For non browser clients its better to disable the CSRF.
+We can see Spring CsrfFilter class to find out the implementation of CSRF token, also what are the request http methods can be accessed 
+without CSRF token. ("GET", "HEAD", "TRACE", "OPTIONS")
+
+For enabling CSRF token in response cookie after Spring Security 5, we need to set the following config in the WebSecurityConfigurerAdapter
+```
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+	http
+			.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())//This config must be added to enable to spring to generate CSRF token
+			.and()
+			.authorizeRequests()//Authorize Request
+			.antMatchers("/", "index", "/css/*", "/js/*").permitAll() // with specific patterns to allow without authentication
+			.antMatchers("/api/**").hasRole(STUDENT.name())
+			//.antMatchers(HttpMethod.POST, "/management/api/**").hasAuthority(STUDENT_WRITE.getPermission())
+			//.antMatchers(HttpMethod.PUT, "/management/api/**").hasAuthority(STUDENT_WRITE.getPermission())
+			//.antMatchers(HttpMethod.DELETE, "/management/api/**").hasAuthority(STUDENT_WRITE.getPermission())
+			//.antMatchers(HttpMethod.GET, "/management/api/**").hasAnyRole(ADMIN.name(), ADMINTRAINEE.name())
+			.anyRequest()  //All the Request
+			.authenticated() // Must be authenticated
+			.and()
+			.httpBasic(); //Using Basic Auth Mechanism
+}
+```
+
+HttpOnly Flag:
+When you set a cookie with the HttpOnly flag, it informs the browser that this special cookie should only be accessed by the server. Any try to access to the cookie 
+from client side script is strictly forbidden. 
+
+CookieCsrfTokenRepository.withHttpOnlyFalse() ==> in this case we externally set HttpOnly to false, so this CSRF token will be read by the client side scripts.
 
 
+
+
+ ==> cookie HttpOnly=false means that cookie value will be able to read using client side scripts.
+
+We can see the response cookie of the first authenticated call will have the CSRF token in the header name XSRF-TOKEN. We can take this token and pass
+to the subsequent requests in header with header name as X-XSRF-TOKEN. Now the POST, PUT, DELETE request will be succeeded. 
