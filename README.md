@@ -263,15 +263,10 @@ protected void configure(HttpSecurity http) throws Exception {
 ```
 
 HttpOnly Flag:
-When you set a cookie with the HttpOnly flag, it informs the browser that this special cookie should only be accessed by the server. Any try to access to the cookie 
+When you set a cookie with the HttpOnly flag, it informs the browser that this special cookie should only be accessed by the server. Any access to the cookie 
 from client side script is strictly forbidden. 
 
-CookieCsrfTokenRepository.withHttpOnlyFalse() ==> in this case we externally set HttpOnly to false, so this CSRF token will be read by the client side scripts.
-
-
-
-
- ==> cookie HttpOnly=false means that cookie value will be able to read using client side scripts.
+CookieCsrfTokenRepository.withHttpOnlyFalse() ==> here we externally set HttpOnly to false, so this CSRF token will be read by the client side scripts.
 
 We can see the response cookie of the first authenticated call will have the CSRF token in the header name XSRF-TOKEN. We can take this token and pass
 to the subsequent requests in header with header name as X-XSRF-TOKEN. Now the POST, PUT, DELETE request will be succeeded. 
