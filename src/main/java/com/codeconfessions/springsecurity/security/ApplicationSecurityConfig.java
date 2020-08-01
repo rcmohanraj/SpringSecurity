@@ -1,10 +1,14 @@
 package com.codeconfessions.springsecurity.security;
 
+import com.codeconfessions.springsecurity.auth.ApplicationUserDetailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.User;
@@ -12,7 +16,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+
+import java.util.concurrent.TimeUnit;
 
 import static com.codeconfessions.springsecurity.model.ApplicationUserRole.*;
 
@@ -21,15 +26,24 @@ import static com.codeconfessions.springsecurity.model.ApplicationUserRole.*;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
 
-    @Autowired
     private PasswordEncoder passwordEncoder;
+
+    private ApplicationUserDetailService applicationUserDetailService;
+
+    @Autowired
+    public ApplicationSecurityConfig(PasswordEncoder passwordEncoder,
+                                     ApplicationUserDetailService applicationUserDetailService) {
+        this.passwordEncoder = passwordEncoder;
+        this.applicationUserDetailService = applicationUserDetailService;
+    }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
                 //.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
-                .csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())//This config must be added to enable to spring to generate CSRF token
-                .and()
+                //.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())//This config must be added to enable to spring to generate CSRF token
+                //.and()
+                .csrf().disable()
                 .authorizeRequests()//Authorize Request
                 .antMatchers("/", "index", "/css/*", "/js/*").permitAll() // with specific patterns to allow without authentication
                 .antMatchers("/api/**").hasRole(STUDENT.name())
@@ -40,10 +54,29 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
                 .anyRequest()  //All the Request
                 .authenticated() // Must be authenticated
                 .and()
-                .httpBasic(); //Using Basic Auth Mechanism
+                //.httpBasic(); //Using Basic Auth Mechanism
+                .formLogin()
+                    .loginPage("/login").permitAll()
+                    .defaultSuccessUrl("/courses")
+                    .usernameParameter("username")
+                    .passwordParameter("password")
+                .and()
+                .rememberMe()
+                    //.tokenRepository()
+                    .tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(21))
+                    .key("somethingverystrong") //Instead of default key we are setting this key to generate a secure MD5 hash
+                    .rememberMeParameter("remember-me")
+                .and()
+                .logout()
+                    .logoutUrl("/logout")
+                    .invalidateHttpSession(true)
+                    .clearAuthentication(true)
+                    .deleteCookies("JSESSIONID", "remember-me")
+                    .logoutSuccessUrl("/login")
+                ;
     }
 
-    @Override
+    /*@Override
     @Bean
     protected UserDetailsService userDetailsService() {
         UserDetails annaSmithUser = User.builder()
@@ -70,5 +103,18 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
         return new InMemoryUserDetailsManager(
             annaSmithUser, lindaUser, tomUser
         );
+    }*/
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) {
+        auth.authenticationProvider(daoAuthenticationProvider());
+    }
+
+    @Bean
+    public DaoAuthenticationProvider daoAuthenticationProvider() {
+        DaoAuthenticationProvider provider= new DaoAuthenticationProvider();
+        provider.setPasswordEncoder(passwordEncoder);
+        provider.setUserDetailsService(applicationUserDetailService);
+        return provider;
     }
 }
