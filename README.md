@@ -413,3 +413,6 @@ In the DaoAuthenticationProvider class we need to set our Custom UserDetailsServ
 database using spring data jpa and fetch our user roles/permissions.
 
 JWT Authentication:
+Fast
+Stateless
+Used across many services

@@ -1,43 +1,69 @@
 package com.codeconfessions.springsecurity.security;
 
 import com.codeconfessions.springsecurity.auth.ApplicationUserDetailService;
+import com.codeconfessions.springsecurity.jwt.JWTAuthenticationFilter;
+import com.codeconfessions.springsecurity.jwt.JwtConfig;
+import com.codeconfessions.springsecurity.jwt.JwtTokenVerifier;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
-import java.util.concurrent.TimeUnit;
+import javax.crypto.SecretKey;
 
 import static com.codeconfessions.springsecurity.model.ApplicationUserRole.*;
 
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
+@ConfigurationPropertiesScan("com.codeconfessions.springsecurity.jwt")
 public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
 
-    private PasswordEncoder passwordEncoder;
-
-    private ApplicationUserDetailService applicationUserDetailService;
+    private final PasswordEncoder passwordEncoder;
+    private final ApplicationUserDetailService applicationUserDetailService;
+    private final JwtConfig jwtConfig;
+    private final SecretKey secretKey;
 
     @Autowired
     public ApplicationSecurityConfig(PasswordEncoder passwordEncoder,
-                                     ApplicationUserDetailService applicationUserDetailService) {
+                                     ApplicationUserDetailService applicationUserDetailService,
+                                     JwtConfig jwtConfig,
+                                     SecretKey secretKey) {
         this.passwordEncoder = passwordEncoder;
         this.applicationUserDetailService = applicationUserDetailService;
+        this.jwtConfig = jwtConfig;
+        this.secretKey = secretKey;
     }
 
+    //JWT
     @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .csrf()
+                    .disable()
+                .sessionManagement()
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and()
+                .addFilter(new JWTAuthenticationFilter(authenticationManager(), jwtConfig, secretKey))
+                .addFilterAfter(new JwtTokenVerifier(jwtConfig, secretKey), JWTAuthenticationFilter.class)
+                .authorizeRequests()//Authorize Request
+                .antMatchers("/", "index", "/css/*", "/js/*").permitAll() // with specific patterns to allow without authentication
+                .antMatchers("/api/**").hasRole(STUDENT.name())
+                .anyRequest()  //All the Request
+                .authenticated(); // Must be authenticated
+    }
+
+
+
+    /*@Override
     protected void configure(HttpSecurity http) throws Exception {
         http
                 //.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
@@ -74,7 +100,7 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
                     .deleteCookies("JSESSIONID", "remember-me")
                     .logoutSuccessUrl("/login")
                 ;
-    }
+    }*/
 
     /*@Override
     @Bean
