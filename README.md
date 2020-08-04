@@ -412,7 +412,97 @@ public DaoAuthenticationProvider daoAuthenticationProvider() {
 In the DaoAuthenticationProvider class we need to set our Custom UserDetailsService class which implements the UserDetailsService. So in this we can call the 
 database using spring data jpa and fetch our user roles/permissions.
 
-JWT Authentication:
-Fast
-Stateless
-Used across many services
+**JWT Authentication and Authorizations:** (JAWT as pronunciation) JSON Web Tokens  
+JSON tokens exchange over the web.
+Fast  
+Stateless  
+Used across many services  
+
+**Why JWT:**  
+Traditionally server authenticates client based on tokens (SessionId+cookie). These session id are maintained by server in the session log. Once the client is authenticated
+the server will generate a session id and send it across to the client. Now the browser will send back the session id in the subsequent requests, so that the server will verify
+it from its own session log. 
+
+The issue here is, it will work only for big monolith kind of applications. When the application has to be deployed in multiple servers with load balancer in front of them, then 
+the client will hit only the load balancer. Load balancer will decide which server to connect based on some random algorithm, also each server will maintain their own session 
+log. For example if client is authenticated by server1 then this session will be maintained by server1 session log, for the subsequent request if the load balancer redirects to the server2 instead of server1 then the current session id is not present in session log of server2. In this case the client request will be failed and server will ask for authentication.
+
+For solving this cases we have two solutions.  
+**1) Shared Session Cache across all the servers (Example: Redis Cache)**  
+This will maintain the session across the servers and each server will validate the session against the common cached session log. In this way we can avoid asking the client to 
+authenticate again. But here we got another problem that is Single Point of Failure. If this cache failures all the clients session will be invalidated. 
+
+**2) Sticky Session:**  
+Once the client is authenticated the load balancer maintains an attribute between client and server like client IP or cookie. Based on this attributes the load balancer will always forward the request of authenticated clients to the same physical server. The problem here is scalability, when one server goes down, entire session log associated with server will
+be destroyed. The client has to authenticate again.
+
+For solving these issues JWT come into play.
+JWT is stateless and session-less. These tokens are signed tokens sent by the server. Whenever the client is authenticated, the server will generate JSON web token using clients username(can be called as principal or subject) and client information by signing with secret key. Can be sent in cookies.
+
+**JWT Structure:Separated by periods(.)**  
+Header . Payload . Signature
+
+1) Header => it will have the type of algorithm used to encrypt. Header will be encoded as Base64 string. 
+
+2) Payload => is the actual json data will be encoded as Base64 string. 
+
+3) Signature => It's the actual value signed by server with secret key by combining header+payload. Here the secret key knows to the server only. 
+
+JWT not only for Web applications, it can be given to any kind of clients to access the service from the server.
+
+**Step 1:** Client sends username and password to server.  
+**Step 2:** Server authenticate the client username and password.   
+**Step 3:** Now server will create JWT for future Authorizations.  
+**Step 4:** Server will send the JWT to the client.  
+**Step 5:** Client will store this in local storage or cookie.  
+**Step 6:** Client will pass the JWT in the subsequent request by adding this JWT to the request header. (header key Authorization and header value begins with (Bearer +JWT))  
+**Step 7:** Server will get the JWT from request header and calculate the signature by combining the encoded header+payload with the secret key and verify against with the incoming signature.  
+
+**Notes:**
+1. No confidential information about users should not be present in the payload
+2. If someone steals the JWT, then make request to the server, now the server will authorizes JWT without knowing its from wrong user because the JWT is valid. So we need to transfer via HTTPS and need to use with other Authentication and Authorization mechanism's like OAUTH.
+3. Sessionid can be validated if we know the sessionid has stolen by someone because its present in server. But in the case of JWT, when we know someone steals the JWT, we will not be able to invalidate because the server always verify the JWT signature is correct. To overcome this we need to have blacklisted JWT's in the database. We can verify this against the DB.
+
+**OAuth 2.0: Auth stands for Authorization**
+Authorization works between services.
+Access Delegation
+
+Here token is used by OAuth is JWT.
+
+**Terms in OAuth Roles:**  
+1) Resource or Protected Resource ==> resource or files the user holds
+2) Resource Owner ==> person to the access resource (user)
+3) Resource Server ==> server hosting the protected resource (example google drive)
+4) Client ==> Application thats making request to protected resource on behalf of the resource owner
+5) Authorization Server ==> managed by Resource Server and coupled together with Resource Server. This server will issue access tokens
+
+**OAuth Flows:  
+Flow 1:**
+1) Resource Owners asks Client to get the Resource from Resource Server
+2) Client will check with Authorization Server to get the permissions
+3) Authorization Server will ask the Resource Owner to validate the credentials
+4) Once the Authorization Server validates the Resource Owner credentials, Authorization Server will give Authorization token to Client
+5) Client will contact Authorization Server with this Authorization Token to get the Access Token
+6) Authorization Server will issue the Access Token to Client based on the Authorization Token (Short lived token)
+7) Client will send the Access Token to Resource Server to access the Resource
+8) Resource Server verify the Access Token with Authorization Server
+9) Once Access Token is validated, Resource Server will issue access to the Resource to Client
+
+Exchange between the Authorization Token and Access Token happening in secure way. So there is no way to steal the Access Token.
+
+**Flow 2: Implicit Flow**  
+Its same as Flow 1 but the place where the Authorization Server will not give Authorization Token and Access Token. Instead it will directly give Access Token.
+
+Drawback of Flow 2: If someone get hold of the Access Token then they can access the Resource Server.
+
+**Flow 3: Client Credential Flow.**  
+Works between Micro Services where the Client is trustworthy. When Service1 calls an Api to Service2. Both services are written by us. Then Service1 is the 
+trustworthy. Here Service2 will have the burden to maintain the Security.
+
+1) Service1 as a Client makes a call to the Authorization Server to get the Access Token
+2) Authorization Server will issue the Access Token to Service1
+3) Service1 use this Access Token to make calls to Service2 where Service2 will authorize the Service1 by using Access Token.
+
+**Note: OAuth is not implemented in this code base.**
+
+------------------------------------------------------------------------------------------------
