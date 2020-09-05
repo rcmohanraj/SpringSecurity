@@ -412,7 +412,7 @@ public DaoAuthenticationProvider daoAuthenticationProvider() {
 In the DaoAuthenticationProvider class we need to set our Custom UserDetailsService class which implements the UserDetailsService. So in this we can call the 
 database using spring data jpa and fetch our user roles/permissions.
 
-**JWT Authentication and Authorizations:** (JAWT as pronunciation) JSON Web Tokens  
+**JWT Authentication and Authorizations:**(JAWT as pronunciation) JSON Web Tokens  
 JSON tokens exchange over the web.
 Fast  
 Stateless  
@@ -436,7 +436,7 @@ authenticate again. But here we got another problem that is Single Point of Fail
 Once the client is authenticated the load balancer maintains an attribute between client and server like client IP or cookie. Based on this attributes the load balancer will always forward the request of authenticated clients to the same physical server. The problem here is scalability, when one server goes down, entire session log associated with server will
 be destroyed. The client has to authenticate again.
 
-For solving these issues JWT come into play.
+For solving these issues JWT came into play.
 JWT is stateless and session-less. These tokens are signed tokens sent by the server. Whenever the client is authenticated, the server will generate JSON web token using clients username(can be called as principal or subject) and client information by signing with secret key. Can be sent in cookies.
 
 **JWT Structure:Separated by periods(.)**  
@@ -463,21 +463,22 @@ JWT not only for Web applications, it can be given to any kind of clients to acc
 2. If someone steals the JWT, then make request to the server, now the server will authorizes JWT without knowing its from wrong user because the JWT is valid. So we need to transfer via HTTPS and need to use with other Authentication and Authorization mechanism's like OAUTH.
 3. Sessionid can be validated if we know the sessionid has stolen by someone because its present in server. But in the case of JWT, when we know someone steals the JWT, we will not be able to invalidate because the server always verify the JWT signature is correct. To overcome this we need to have blacklisted JWT's in the database. We can verify this against the DB.
 
+
 **OAuth 2.0: Auth stands for Authorization**
 Authorization works between services.
 Access Delegation
 
 Here token is used by OAuth is JWT.
 
-**Terms in OAuth Roles:**  
+Terms in OAuth Roles:  
 1) Resource or Protected Resource ==> resource or files the user holds
 2) Resource Owner ==> person to the access resource (user)
 3) Resource Server ==> server hosting the protected resource (example google drive)
 4) Client ==> Application thats making request to protected resource on behalf of the resource owner
 5) Authorization Server ==> managed by Resource Server and coupled together with Resource Server. This server will issue access tokens
 
-**OAuth Flows:  
-Flow 1:**
+OAuth Flows:  
+Flow 1:
 1) Resource Owners asks Client to get the Resource from Resource Server
 2) Client will check with Authorization Server to get the permissions
 3) Authorization Server will ask the Resource Owner to validate the credentials
@@ -490,19 +491,16 @@ Flow 1:**
 
 Exchange between the Authorization Token and Access Token happening in secure way. So there is no way to steal the Access Token.
 
-**Flow 2: Implicit Flow**  
+Flow 2: Implicit Flow
 Its same as Flow 1 but the place where the Authorization Server will not give Authorization Token and Access Token. Instead it will directly give Access Token.
 
 Drawback of Flow 2: If someone get hold of the Access Token then they can access the Resource Server.
 
-**Flow 3: Client Credential Flow.**  
+Flow 3: Client Credential Flow.
 Works between Micro Services where the Client is trustworthy. When Service1 calls an Api to Service2. Both services are written by us. Then Service1 is the 
 trustworthy. Here Service2 will have the burden to maintain the Security.
 
 1) Service1 as a Client makes a call to the Authorization Server to get the Access Token
 2) Authorization Server will issue the Access Token to Service1
-3) Service1 use this Access Token to make calls to Service2 where Service2 will authorize the Service1 by using Access Token.
+3) Service1 use this Access Token to make calls to Service2 where Service2 will authorize the request from Service1 by using the Access Token.
 
-**Note: OAuth is not implemented in this code base.**
-
-------------------------------------------------------------------------------------------------

@@ -8,8 +8,8 @@
 		<version>2.3.2.RELEASE</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.codeconfessions.springsecurity</groupId>
-	<artifactId>codeconfessions-springsecurity</artifactId>
+	<groupId>com.rcmcode.springsecurity</groupId>
+	<artifactId>rcmcode-springsecurity</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Spring Security Features</name>
 	<description>Exploring full features of Spring Security</description>
